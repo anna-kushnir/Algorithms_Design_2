@@ -103,7 +103,7 @@ class GraphColoring:
                     if neighbor != ancestor:
                         lst.append(neighbor)
                     if flag == 0:
-                        lst.append(np.random.randint(0, self.num + 1))
+                        lst.append(np.random.randint(self.num))
                         flag = 1
                 ancestor = vertex
                 current += 1
