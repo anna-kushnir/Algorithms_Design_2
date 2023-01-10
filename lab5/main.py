@@ -7,9 +7,9 @@ if __name__ == "__main__":
     # if flag != 'F' and flag != 'f':
     #     f = CreateGraph()
     #     f.create_and_save_to_file(path)
-    scout_bees = 5
+    scout_bees = 3
     foragers = 30
-    solutions = 40
-    iterations = 40
+    solutions = 2
+    iterations = 50
     algorithm = Algorithm(path, scout_bees, foragers, solutions, iterations)
     algorithm.bee_algorithm()
