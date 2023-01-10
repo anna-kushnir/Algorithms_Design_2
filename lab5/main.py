@@ -10,6 +10,6 @@ if __name__ == "__main__":
     scout_bees = 3
     foragers = 30
     solutions = 2
-    iterations = 50
+    iterations = 1000
     algorithm = Algorithm(path, scout_bees, foragers, solutions, iterations)
     algorithm.bee_algorithm()

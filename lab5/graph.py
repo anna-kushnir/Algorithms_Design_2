@@ -11,7 +11,6 @@ class CreateGraph:
         self._generate_graph()
         with open(path, 'w') as f:
             f.write(str(self.num) + '\n')
-            f.write(str(self.max_pow) + '\n')
             for edge in self.edges:
                 f.write(str(edge[0]) + ' ' + str(edge[1]) + '\n')
     

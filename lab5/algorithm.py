@@ -14,13 +14,11 @@ class Graph:
     def __init__(self, path: str):
         self.edges = []
         self.vertex_num = 0
-        self.max_pow = 0
         self.counts = []
         with open(path, 'r') as f:
             lines = f.readlines()
             self.vertex_num = int(lines[0])
-            self.max_pow = int(lines[1])
-            lines = lines[2:]
+            lines = lines[1:]
             self.edges = [list(map(int, line.split())) for line in lines]
             self._count_occurence_of_vertices_and_sort()
     
@@ -69,10 +67,14 @@ class Solution:
         self.graph = graph
         self.solution = solution
         self.colors_num = self.count_colors()
+        self.last_color_num = self.count_occurrences_of_last_color()
     
     def count_colors(self):
         return len(set(self.solution))
     
+    def count_occurrences_of_last_color(self):
+        return self.solution.count(self.colors_num)
+
     def greedy_algorithm(self):
         """Жадібний алгоритм розфарбування графа."""
         self.solution = [-1] * self.graph.vertex_num
@@ -86,31 +88,26 @@ class Solution:
                         self.solution[vertex] = curr_color
             curr_color += 1
         self.colors_num = self.count_colors()
+        self.last_color_num = self.count_occurrences_of_last_color()
 
-    def get_neighbor_solution(self, k: int):
+    def get_neighbor_solution(self):
         """Повертає рішення, близьке до поточного, але з деякими змінами
         та покращеннями."""
         if len(self.solution) == 0:
             return Solution(self.graph)
-        # vertex = np.random.randint(self.graph.vertex_num)
-        count = 0
-        i = 0
-        while i < self.graph.vertex_num:
-            if count + self.graph.counts[i][1] >= k:
-                break
-            i += 1
-        vertex = self.graph.counts[i][0]
+        vertex = np.random.randint(self.graph.vertex_num)
         neighbors = self.graph.get_neighbors(vertex)
-        neighbor = neighbors[k - count - 1]
-        # np.random.shuffle(neighbors)
+        np.random.shuffle(neighbors)
         solution_to_return = self.solution.copy()
         for neighbor in neighbors:
             temp_solution = solution_to_return.copy()
             temp_solution[vertex], temp_solution[neighbor] = temp_solution[neighbor], temp_solution[vertex]
-            if self._is_color_available(neighbor, temp_solution[neighbor], temp_solution) and self._is_color_available(vertex, temp_solution[vertex], temp_solution):
-                new_color = self._get_available_color(neighbor, temp_solution)
-                if new_color != -1:
-                    temp_solution[neighbor] = new_color
+            new_color1 = self._get_available_color(vertex, temp_solution)
+            if new_color1 != -1:
+                temp_solution[vertex] = new_color1
+                new_color2 = self._get_available_color(neighbor, temp_solution)
+                if new_color2 != -1:
+                    temp_solution[neighbor] = new_color2
                     solution_to_return = temp_solution.copy()
         return Solution(self.graph, solution_to_return)
 
@@ -167,11 +164,15 @@ class Algorithm:
     def _sort_solutions(self):
         """Сортує рішення y порядку зростання цільової функції
         (кількості використаних кольорів)."""
-        def func(elem: Solution):
-            return elem.colors_num
-        self.solutions.sort(key = func)
+        for i in range(len(self.solutions)):
+            for j in range(i + 1, len(self.solutions)):
+                if (self.solutions[i].colors_num > self.solutions[j].colors_num or 
+                self.solutions[i].colors_num == self.solutions[j].colors_num and self.solutions[i].last_color_num > self.solutions[j].last_color_num):
+                    temp = self.solutions[i]
+                    self.solutions[i] = self.solutions[j]
+                    self.solutions[j] = temp
 
-    def _send_scout(self, curr_best_sltn_index: int, visited_indexes: list[int], foragers_sent: int):
+    def _send_scout(self, curr_best_sltn_index: int, visited_indexes: list[int]):
         """Відправляє бджолу-розвідника на ділянку (рішення).
         Повертає True, якщо ділянку ще не відвідували інші i 
         на неї було відправлено розвідника."""
@@ -180,29 +181,29 @@ class Algorithm:
                 curr_best_sltn_index += 1
                 return False
             visited_indexes.append(curr_best_sltn_index)
-            self._send_foragers(curr_best_sltn_index, foragers_sent)
+            self._send_foragers(curr_best_sltn_index)
         else:
             index = np.random.randint(self.solutions_num)
             if index in visited_indexes:
                 return False
             visited_indexes.append(index)
-            self._send_foragers(index, foragers_sent)
+            self._send_foragers(index)
         return True
 
-    def _send_foragers(self, sltn_index: int, foragers_sent: int):
+    def _send_foragers(self, sltn_index: int):
         """Відправляє фуражирів на ділянку для дослідження її околу 
         (сусідніх ділянок)."""
-        best_neighbor = self.solutions[sltn_index].get_neighbor_solution(0)
-        for i in range(self.graph.max_pow):
-            if foragers_sent == self.foragers_num:
-                break
-            curr_neighbor = self.solutions[sltn_index].get_neighbor_solution(i)
-            if curr_neighbor.colors_num < best_neighbor.colors_num:
+        best_neighbor = self.solutions[sltn_index].get_neighbor_solution()
+        for i in range(1, self.foragers_num):
+            curr_neighbor = self.solutions[sltn_index].get_neighbor_solution()
+            if (curr_neighbor.colors_num < best_neighbor.colors_num or
+            curr_neighbor.colors_num == best_neighbor.colors_num and curr_neighbor.last_color_num <= best_neighbor.last_color_num):
                 best_neighbor = curr_neighbor
-            foragers_sent += 1
-        if best_neighbor.colors_num < self.solutions[sltn_index].colors_num:
+        if (best_neighbor.colors_num < self.solutions[sltn_index].colors_num or
+        best_neighbor.colors_num == self.solutions[sltn_index].colors_num and best_neighbor.last_color_num <= self.solutions[sltn_index].last_color_num):
             self.solutions[sltn_index] = best_neighbor
-        if self.solutions[sltn_index].colors_num < self.best_solution.colors_num:
+        if (self.solutions[sltn_index].colors_num < self.best_solution.colors_num or
+        self.solutions[sltn_index].colors_num == self.best_solution.colors_num and self.solutions[sltn_index].last_color_num <= self.best_solution.last_color_num):
             self.best_solution = self.solutions[sltn_index]
 
 
@@ -211,15 +212,14 @@ class Algorithm:
         for i in range(self.iterations_num):
             visited_indexes = []
             curr_best_sltn_index = 0
-            foragers_sent = 0
             scouts_sent = 0
-            while scouts_sent < self.scouts_num and scouts_sent < self.solutions_num and foragers_sent < self.foragers_num:
-                if self._send_scout(curr_best_sltn_index, visited_indexes, foragers_sent):
+            while scouts_sent < self.scouts_num and scouts_sent < self.solutions_num:
+                if self._send_scout(curr_best_sltn_index, visited_indexes):
                     scouts_sent += 1
             self._sort_solutions()
             if i == 0:
                 self.graph.draw_colored_graph('', self.best_solution.solution)
-            if (i + 1) % 4 == 0:
+            if (i + 1) % 20 == 0:
                 print('Iteration: ' + str(i + 1))
                 print('Best number of colors:', self.best_solution.colors_num)
                 # self.graph.draw_colored_graph('', self.best_solution.solution)
