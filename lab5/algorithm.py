@@ -41,7 +41,7 @@ class Graph:
         for u, v in self.edges:
             graph.add_edge(u, v)
         pos = nx.spring_layout(graph)
-        colors = ['red', 'magenta', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink', 'brown', 'grey', 'black']
+        colors = ['red', 'magenta', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink', 'brown', 'grey', 'black', 'lavender', 'darkblue', 'lightgreen']
         vertex_colors_names = [colors[solution[vertex]] for vertex in graph.nodes()]
         nx.draw(graph, pos, with_labels = True, node_color = vertex_colors_names, edge_color = 'black', alpha = 0.7)
         plt.show()
@@ -73,7 +73,7 @@ class Solution:
         return len(set(self.solution))
     
     def count_occurrences_of_last_color(self):
-        return self.solution.count(self.colors_num)
+        return self.solution.count(self.colors_num - 1)
 
     def greedy_algorithm(self):
         """Жадібний алгоритм розфарбування графа."""
@@ -90,26 +90,34 @@ class Solution:
         self.colors_num = self.count_colors()
         self.last_color_num = self.count_occurrences_of_last_color()
 
-    def get_neighbor_solution(self):
+    def get_neighbor_solution(self, foragers: int):
         """Повертає рішення, близьке до поточного, але з деякими змінами
         та покращеннями."""
         if len(self.solution) == 0:
             return Solution(self.graph)
-        vertex = np.random.randint(self.graph.vertex_num)
-        neighbors = self.graph.get_neighbors(vertex)
-        np.random.shuffle(neighbors)
+        foragers_sent = 0
         solution_to_return = self.solution.copy()
-        for neighbor in neighbors:
-            temp_solution = solution_to_return.copy()
-            temp_solution[vertex], temp_solution[neighbor] = temp_solution[neighbor], temp_solution[vertex]
-            new_color1 = self._get_available_color(vertex, temp_solution)
-            if new_color1 != -1:
-                temp_solution[vertex] = new_color1
-                new_color2 = self._get_available_color(neighbor, temp_solution)
-                if new_color2 != -1:
-                    temp_solution[neighbor] = new_color2
+        for i in range(self.graph.vertex_num):
+            if foragers_sent == foragers:
+                break
+            vertex = self.graph.counts[i][0]
+            neighbors = self.graph.get_neighbors(vertex)
+            for neighbor in neighbors:
+                if foragers_sent == foragers:
+                    break
+                temp_solution = solution_to_return.copy()
+                temp_solution[vertex], temp_solution[neighbor] = temp_solution[neighbor], temp_solution[vertex]
+                if self._is_color_available(neighbor, temp_solution[neighbor], temp_solution) and self._is_color_available(vertex, temp_solution[vertex], temp_solution):
+                    foragers_sent += 1
+                    new_color1 = self._get_available_color(vertex, temp_solution)
+                    if new_color1 != -1:
+                        temp_solution[vertex] = new_color1
+                    new_color2 = self._get_available_color(neighbor, temp_solution)
+                    if new_color2 != -1:
+                        temp_solution[neighbor] = new_color2
                     solution_to_return = temp_solution.copy()
         return Solution(self.graph, solution_to_return)
+
 
     def _is_color_available(self, vertex: int, color: int, solution: list[int] = []):
         """Перевіряє, чи можна розмалювати дану вершину даним кольором 
@@ -167,12 +175,37 @@ class Algorithm:
         for i in range(len(self.solutions)):
             for j in range(i + 1, len(self.solutions)):
                 if (self.solutions[i].colors_num > self.solutions[j].colors_num or 
-                self.solutions[i].colors_num == self.solutions[j].colors_num and self.solutions[i].last_color_num > self.solutions[j].last_color_num):
+                self.solutions[i].colors_num == self.solutions[j].colors_num and self.solutions[i].last_color_num >= self.solutions[j].last_color_num):
                     temp = self.solutions[i]
                     self.solutions[i] = self.solutions[j]
                     self.solutions[j] = temp
 
-    def _send_scout(self, curr_best_sltn_index: int, visited_indexes: list[int]):
+    def bee_algorithm(self):
+        """Запускає бджолиний алгоритм."""
+        foragers_on_solution = self.graph.counts[0][1]
+        for i in range(self.iterations_num):
+            visited_indexes = []
+            curr_best_sltn_index = 0
+            scouts_sent = 0
+            foragers_sent = 0
+            while scouts_sent < self.scouts_num and scouts_sent < self.solutions_num:
+                if foragers_sent + foragers_on_solution >= self.foragers_num:
+                    if self._send_scout(curr_best_sltn_index, visited_indexes, self.foragers_num - foragers_sent):
+                        scouts_sent += 1
+                        break
+                else:
+                    if self._send_scout(curr_best_sltn_index, visited_indexes, foragers_on_solution):
+                        scouts_sent += 1
+                        foragers_sent += foragers_on_solution
+                        self._sort_solutions()
+            self._sort_solutions()
+            self.best_solution = self.solutions[0]
+            print('Iteration: ' + str(i + 1))
+            print('Best number of colors:', self.best_solution.colors_num)
+        self.graph.draw_colored_graph('THE RESULT OF BEES ALGORITHM', self.best_solution.solution)
+        return self.best_solution
+
+    def _send_scout(self, curr_best_sltn_index: int, visited_indexes: list[int], foragers_sent: int):
         """Відправляє бджолу-розвідника на ділянку (рішення).
         Повертає True, якщо ділянку ще не відвідували інші i 
         на неї було відправлено розвідника."""
@@ -181,47 +214,19 @@ class Algorithm:
                 curr_best_sltn_index += 1
                 return False
             visited_indexes.append(curr_best_sltn_index)
-            self._send_foragers(curr_best_sltn_index)
+            self._send_foragers(curr_best_sltn_index, foragers_sent)
         else:
             index = np.random.randint(self.solutions_num)
             if index in visited_indexes:
                 return False
             visited_indexes.append(index)
-            self._send_foragers(index)
+            self._send_foragers(index, foragers_sent)
         return True
 
-    def _send_foragers(self, sltn_index: int):
+    def _send_foragers(self, sltn_index: int, foragers_sent: int):
         """Відправляє фуражирів на ділянку для дослідження її околу 
         (сусідніх ділянок)."""
-        best_neighbor = self.solutions[sltn_index].get_neighbor_solution()
-        for i in range(1, self.foragers_num):
-            curr_neighbor = self.solutions[sltn_index].get_neighbor_solution()
-            if (curr_neighbor.colors_num < best_neighbor.colors_num or
-            curr_neighbor.colors_num == best_neighbor.colors_num and curr_neighbor.last_color_num <= best_neighbor.last_color_num):
-                best_neighbor = curr_neighbor
-        if (best_neighbor.colors_num < self.solutions[sltn_index].colors_num or
-        best_neighbor.colors_num == self.solutions[sltn_index].colors_num and best_neighbor.last_color_num <= self.solutions[sltn_index].last_color_num):
-            self.solutions[sltn_index] = best_neighbor
-        if (self.solutions[sltn_index].colors_num < self.best_solution.colors_num or
-        self.solutions[sltn_index].colors_num == self.best_solution.colors_num and self.solutions[sltn_index].last_color_num <= self.best_solution.last_color_num):
-            self.best_solution = self.solutions[sltn_index]
-
-
-    def bee_algorithm(self):
-        """Запускає бджолиний алгоритм."""
-        for i in range(self.iterations_num):
-            visited_indexes = []
-            curr_best_sltn_index = 0
-            scouts_sent = 0
-            while scouts_sent < self.scouts_num and scouts_sent < self.solutions_num:
-                if self._send_scout(curr_best_sltn_index, visited_indexes):
-                    scouts_sent += 1
-            self._sort_solutions()
-            if i == 0:
-                self.graph.draw_colored_graph('', self.best_solution.solution)
-            if (i + 1) % 20 == 0:
-                print('Iteration: ' + str(i + 1))
-                print('Best number of colors:', self.best_solution.colors_num)
-                # self.graph.draw_colored_graph('', self.best_solution.solution)
-        self.graph.draw_colored_graph('THE RESULT OF BEES ALGORITHM', self.best_solution.solution)
-        return self.best_solution
+        neighbor_solution = self.solutions[sltn_index].get_neighbor_solution(foragers_sent)
+        if (neighbor_solution.colors_num < self.solutions[self.solutions_num - 1].colors_num or
+        neighbor_solution.colors_num == self.solutions[self.solutions_num - 1].colors_num and neighbor_solution.last_color_num <= self.solutions[self.solutions_num - 1].last_color_num):
+            self.solutions[self.solutions_num - 1] = neighbor_solution
