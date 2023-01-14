@@ -3,8 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 """
-Задача розфарбовування графу (300 вершин, степінь вершини не більше 30, 
-але не менше 2), бджолиний алгоритм.
+Задача розфарбовування графу класичним бджолиним алгоритмом.
 """
 
 class Graph:
@@ -12,6 +11,7 @@ class Graph:
     Слугує для збереження структури графу.
     """
     def __init__(self, path: str):
+        """Ініціалізує граф."""
         self.edges = []
         self.vertex_num = 0
         self.counts = []
@@ -46,19 +46,21 @@ class Graph:
 
 class Solution:
     """
-    Слугує для збереження даних про конкретне рішення
-    (певне розфарбування графу).
+    Слугує для збереження даних про конкретне рішення (певне розфарбування графу).
     """
     def __init__(self, graph: Graph, solution: list[int] = []):
+        """Ініціалізує рішення."""
         self.graph = graph
         self.solution = solution
         self.colors_num = self.count_colors()
         self.last_color_num = self.count_occurrences_of_last_color()
     
     def count_colors(self):
+        """Рахує кількість використаних кольорів."""
         return len(set(self.solution))
     
     def count_occurrences_of_last_color(self):
+        """Рахує кількість появ кольору, що був доданий останнім."""
         return self.solution.count(self.colors_num - 1)
 
     def greedy_algorithm(self):
@@ -103,7 +105,6 @@ class Solution:
                         temp_solution[neighbor] = new_color2
                     solution_to_return = temp_solution.copy()
         return Solution(self.graph, solution_to_return)
-
 
     def _is_color_available(self, vertex: int, color: int, solution: list[int] = []):
         """Перевіряє, чи можна розмалювати дану вершину даним кольором 
