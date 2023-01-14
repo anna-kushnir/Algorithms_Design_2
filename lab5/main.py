@@ -8,8 +8,9 @@ if __name__ == "__main__":
     #     f = CreateGraph()
     #     f.create_and_save_to_file(path)
     scout_bees = 3
-    foragers = 90
-    solutions = 5
+    foragers = 60
+    solutions = 1
     iterations = 1000
     algorithm = Algorithm(path, scout_bees, foragers, solutions, iterations)
     algorithm.bee_algorithm()
+    

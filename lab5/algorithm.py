@@ -32,20 +32,6 @@ class Graph:
                 neighbors.append(start)
         return neighbors
     
-    def draw_colored_graph(self, header: str, solution: list[int]):
-        """Виводить граф з даним розфарбуванням вершин."""
-        if header != '':
-            print(header)
-            print('Number of colors:', len(set(solution)))
-        graph = nx.Graph()
-        for u, v in self.edges:
-            graph.add_edge(u, v)
-        pos = nx.spring_layout(graph)
-        colors = ['red', 'magenta', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'pink', 'brown', 'grey', 'black', 'lavender', 'darkblue', 'lightgreen']
-        vertex_colors_names = [colors[solution[vertex]] for vertex in graph.nodes()]
-        nx.draw(graph, pos, with_labels = True, node_color = vertex_colors_names, edge_color = 'black', alpha = 0.7)
-        plt.show()
-    
     def _count_occurence_of_vertices_and_sort(self):
         """Рахує кількість зв'язків з кожною із вершин i 
         сортує створений список кількостей y порядку спадання."""
@@ -159,7 +145,6 @@ class Algorithm:
         self.graph = Graph(path)
         self.solutions: list[Solution] = self._create_list_of_solutions()
         self._sort_solutions()
-        self.best_solution: Solution = self.solutions[0]
     
     def _create_list_of_solutions(self):
         """Ініціалізує ділянки для розвідки та пошуку."""
@@ -199,16 +184,14 @@ class Algorithm:
                         foragers_sent += foragers_on_solution
                         self._sort_solutions()
             self._sort_solutions()
-            self.best_solution = self.solutions[0]
             print('Iteration: ' + str(i + 1))
-            print('Best number of colors:', self.best_solution.colors_num)
-        self.graph.draw_colored_graph('THE RESULT OF BEES ALGORITHM', self.best_solution.solution)
-        return self.best_solution
+            print('Best number of colors:', self.solutions[0].colors_num)
+        return self.solutions[0]
 
     def _send_scout(self, curr_best_sltn_index: int, visited_indexes: list[int], foragers_sent: int):
         """Відправляє бджолу-розвідника на ділянку (рішення).
         Повертає True, якщо ділянку ще не відвідували інші i 
-        на неї було відправлено розвідника."""
+        на неї вдалося відправити розвідника."""
         if np.random.random_sample() > self.probability:
             if curr_best_sltn_index in visited_indexes:
                 curr_best_sltn_index += 1
@@ -227,6 +210,4 @@ class Algorithm:
         """Відправляє фуражирів на ділянку для дослідження її околу 
         (сусідніх ділянок)."""
         neighbor_solution = self.solutions[sltn_index].get_neighbor_solution(foragers_sent)
-        if (neighbor_solution.colors_num < self.solutions[self.solutions_num - 1].colors_num or
-        neighbor_solution.colors_num == self.solutions[self.solutions_num - 1].colors_num and neighbor_solution.last_color_num <= self.solutions[self.solutions_num - 1].last_color_num):
-            self.solutions[self.solutions_num - 1] = neighbor_solution
+        self.solutions[self.solutions_num - 1] = neighbor_solution
