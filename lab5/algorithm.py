@@ -142,7 +142,7 @@ class Algorithm:
         self.foragers_num = foragers_num
         self.solutions_num = solutions_num
         self.iterations_num = iterations_num
-        self.probability = 0.4
+        self.probability = 0.5
         self.graph = Graph(path)
         self.solutions: list[Solution] = self._create_list_of_solutions()
         self._sort_solutions()
@@ -168,7 +168,7 @@ class Algorithm:
 
     def bee_algorithm(self):
         """Запускає бджолиний алгоритм."""
-        foragers_on_solution = self.graph.counts[0][1]
+        foragers_on_solution = int(self.foragers_num / self.scouts_num + 0.5)
         for i in range(self.iterations_num):
             visited_indexes = []
             curr_best_sltn_index = 0
@@ -211,4 +211,4 @@ class Algorithm:
         """Відправляє фуражирів на ділянку для дослідження її околу 
         (сусідніх ділянок)."""
         neighbor_solution = self.solutions[sltn_index].get_neighbor_solution(foragers_sent)
-        self.solutions[self.solutions_num - 1] = neighbor_solution
+        self.solutions[sltn_index] = neighbor_solution
